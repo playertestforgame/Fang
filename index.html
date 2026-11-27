@@ -1,0 +1,625 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教授 NPC 模擬器</title>
+
+<style>
+*{
+    box-sizing:border-box;
+}
+body{
+    margin:0;
+    background:#172033;
+    color:white;
+    font-family:system-ui,sans-serif;
+    text-align:center;
+    user-select:none;
+}
+main{
+    max-width:900px;
+    margin:auto;
+    padding:12px;
+}
+h1{
+    font-size:24px;
+    margin:10px;
+}
+canvas{
+    width:100%;
+    display:block;
+    background:#e5dfd0;
+    border:4px solid #475569;
+    border-radius:12px;
+    touch-action:none;
+}
+.controls{
+    display:grid;
+    grid-template-columns:repeat(3,65px);
+    justify-content:center;
+    gap:6px;
+    margin:18px auto;
+}
+button{
+    width:65px;
+    height:55px;
+    border:0;
+    border-radius:10px;
+    background:#facc15;
+    color:#172033;
+    font-size:24px;
+    font-weight:bold;
+    touch-action:none;
+}
+button:active{
+    background:#ffffff;
+}
+p{
+    color:#cbd5e1;
+    font-size:14px;
+}
+#talk{
+    width:auto;
+    padding:0 24px;
+    font-size:16px;
+}
+</style>
+</head>
+
+<body>
+
+<main>
+
+<h1>教授 NPC 模擬器</h1>
+
+<p>PROGRAMMING CLASS SIMULATOR</p>
+
+<canvas id="game" width="800" height="500"></canvas>
+
+<div class="controls">
+    <span></span>
+    <button data-key="w">▲</button>
+    <span></span>
+    <button data-key="a">◀</button>
+    <button data-key="s">▼</button>
+    <button data-key="d">▶</button>
+</div>
+
+<button id="talk">與教授對話</button>
+
+<p>WASD / 方向鍵移動・點擊教授進行對話</p>
+
+</main>
+
+<script>
+
+var canvas = document.getElementById("game");
+var ctx = canvas.getContext("2d");
+
+// 教授照片直接內嵌
+
+var face = new Image();
+
+face.src = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABcQERQRDhcUEhQaGBcbIjklIh8fIkYyNSk5UkhXVVFIUE5bZoNvW2F8Yk5QcptzfIeLkpSSWG2grJ+OqoOPko3/2wBDARgaGiIeIkMlJUONXlBejY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY3/wAARCAAwACcDASIAAhEBAxEB/8QAGQAAAgMBAAAAAAAAAAAAAAAAAAQCAwUB/8QAJxAAAgEDBAEEAgMAAAAAAAAAAQIDAAQREiExUQUTQXGBImEyQlL/xAAXAQEBAQEAAAAAAAAAAAAAAAADBAIA/8QAGxEAAwEAAwEAAAAAAAAAAAAAAAERAgMhMUH/2gAMAwEAAhEDEQA/ANiR1iQu7BVHJNZz+UaRsW8WR2eT9VX5h3llS3U4QYLHs1fZxqigAAV29w7GL2yKXN6N2hyvXFMW97HO5jIKSD+rUysYIpS/tQ6al2kXdWFYXI/pt8afg5RS1jK0kGHOpk2J7opwIZvkJNN7IH7GkfVds72UuAI0A6LfkfquXo1eQkD4znA+MVYIEiiJUb45wKDTVKMJwal8gREHhK8blgcCoRXryjMmh1xylTjjQ28fvhcEA1b6KldQxgDusU3CFiyl5PT/AI8/BoqdrHhi4GAc5A96Koy6ibajFPKW59VZ1BwRhj11SkswCKsoZgdsrW86LIhRhkEYNYMielO8Tk4B5o9ruicevg3atBEgMcLkgbHGSKYU5BYgoP8AJpe3CJu05YdVYoN1OFjB0Z3/AHR+i0cgGIge96KlFIssYZDtx8fqiqUooSt10//Z";
+
+// 教授的台詞
+
+var dialogues = [
+    "要不要跟我游泳",
+    "今天要教你們上傳到GitHub",
+    "我們來先點名",
+    "製作一個電動遊戲",
+    "這教室電腦有防寫卡",
+    "今天手很痛"
+];
+
+var dialogueIndex = 0;
+var frame = 0;
+var talkCount = 0;
+
+var keys = {};
+
+var professor = {
+    x:400,
+    y:235,
+    direction:1
+};
+
+var player = {
+    x:400,
+    y:450
+};
+
+// 切換台詞
+
+function nextDialogue(){
+
+    dialogueIndex =
+    (dialogueIndex + 1) % dialogues.length;
+
+    talkCount++;
+
+}
+
+setInterval(nextDialogue,3000);
+
+document.getElementById("talk").onclick =
+nextDialogue;
+
+// 鍵盤操作
+
+window.addEventListener("keydown",function(e){
+
+    var k = e.key.toLowerCase();
+
+    if(k === "arrowup") k = "w";
+    if(k === "arrowdown") k = "s";
+    if(k === "arrowleft") k = "a";
+    if(k === "arrowright") k = "d";
+
+    if(["w","a","s","d"].indexOf(k) >= 0){
+        e.preventDefault();
+        keys[k] = true;
+    }
+
+});
+
+window.addEventListener("keyup",function(e){
+
+    var k = e.key.toLowerCase();
+
+    if(k === "arrowup") k = "w";
+    if(k === "arrowdown") k = "s";
+    if(k === "arrowleft") k = "a";
+    if(k === "arrowright") k = "d";
+
+    keys[k] = false;
+
+});
+
+window.addEventListener("blur",function(){
+    keys = {};
+});
+
+// 手機方向鍵
+
+var controls =
+document.querySelectorAll("[data-key]");
+
+for(var i=0;i<controls.length;i++){
+
+    (function(button){
+
+        var key =
+        button.getAttribute("data-key");
+
+        button.addEventListener(
+            "pointerdown",
+            function(e){
+                e.preventDefault();
+                keys[key] = true;
+                button.setPointerCapture(e.pointerId);
+            }
+        );
+
+        function release(){
+            keys[key] = false;
+        }
+
+        button.addEventListener("pointerup",release);
+        button.addEventListener("pointercancel",release);
+        button.addEventListener("lostpointercapture",release);
+
+    })(controls[i]);
+
+}
+
+// 點擊教授
+
+canvas.addEventListener("click",function(e){
+
+    var r = canvas.getBoundingClientRect();
+
+    var x =
+    (e.clientX-r.left)*800/r.width;
+
+    var y =
+    (e.clientY-r.top)*500/r.height;
+
+    if(
+        Math.abs(x-professor.x)<60 &&
+        y>professor.y-110 &&
+        y<professor.y+20
+    ){
+        nextDialogue();
+    }
+
+});
+
+// 基本繪圖
+
+function rect(x,y,w,h,color){
+
+    ctx.fillStyle=color;
+    ctx.fillRect(x,y,w,h);
+
+}
+
+function circle(x,y,r,color){
+
+    ctx.fillStyle=color;
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fill();
+
+}
+
+function text(t,x,y,size,color){
+
+    ctx.fillStyle=color;
+    ctx.font="bold "+size+"px sans-serif";
+    ctx.textAlign="center";
+    ctx.fillText(t,x,y);
+
+}
+
+// 電腦
+
+function computer(x,y){
+
+    rect(x,y,76,48,"#263244");
+
+    rect(x+5,y+5,66,38,"#101827");
+
+    for(var j=0;j<4;j++){
+
+        rect(
+            x+10,
+            y+10+j*7,
+            20+j*8,
+            3,
+            j%2?"#4ade80":"#60a5fa"
+        );
+
+    }
+
+    rect(x+32,y+48,12,10,"#475569");
+
+    rect(x+20,y+58,36,5,"#334155");
+
+    rect(x+8,y+69,60,9,"#94a3b8");
+
+}
+
+// 教室
+
+function classroom(){
+
+    rect(0,0,800,500,"#e8e4d8");
+
+    rect(0,160,800,340,"#c7b99e");
+
+    // 地板磁磚
+
+    for(var x=0;x<800;x+=50){
+
+        rect(x,160,1,340,"#b3a68c");
+
+    }
+
+    for(var y=160;y<500;y+=50){
+
+        rect(0,y,800,1,"#b3a68c");
+
+    }
+
+    // 黑板
+
+    rect(150,20,500,115,"#805b3c");
+
+    rect(160,30,480,95,"#24574b");
+
+    text(
+        "PROGRAMMING CLASS",
+        400,65,25,"#ffffff"
+    );
+
+    text(
+        "console.log('Hello World');",
+        400,100,20,"#bbf7d0"
+    );
+
+    // 窗戶
+
+    rect(15,25,110,110,"#ffffff");
+
+    rect(21,31,98,98,"#93d8fa");
+
+    rect(65,31,6,98,"#ffffff");
+
+    rect(21,78,98,6,"#ffffff");
+
+    rect(675,25,110,110,"#ffffff");
+
+    rect(681,31,98,98,"#93d8fa");
+
+    rect(725,31,6,98,"#ffffff");
+
+    rect(681,78,98,6,"#ffffff");
+
+    // 電腦桌
+
+    for(var row=0;row<2;row++){
+
+        for(var col=0;col<3;col++){
+
+            var dx=85+col*245;
+
+            var dy=300+row*105;
+
+            rect(
+                dx-45,dy+15,
+                165,55,"#9c714c"
+            );
+
+            rect(
+                dx-45,dy+15,
+                165,8,"#c49b72"
+            );
+
+            computer(dx,dy-30);
+
+            rect(
+                dx+12,dy+75,
+                52,20,"#64748b"
+            );
+
+        }
+
+    }
+
+}
+
+// 教授 NPC
+
+function drawProfessor(){
+
+    var x=professor.x;
+    var y=professor.y;
+
+    var step=Math.sin(frame*0.15)*4;
+
+    // 影子
+
+    ctx.fillStyle="rgba(0,0,0,0.18)";
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        x,y+4,30,7,0,0,Math.PI*2
+    );
+
+    ctx.fill();
+
+    // 腳
+
+    rect(x-18,y-24,15,24+step,"#263244");
+
+    rect(x+3,y-24,15,24-step,"#263244");
+
+    // 鞋子
+
+    rect(x-21,y-3+step,19,7,"#111827");
+
+    rect(x+3,y-3-step,19,7,"#111827");
+
+    // 西裝
+
+    rect(x-25,y-65,50,42,"#263d65");
+
+    // 襯衫
+
+    rect(x-7,y-65,14,30,"#ffffff");
+
+    // 手臂
+
+    rect(x-34,y-62,10,30,"#263d65");
+
+    rect(x+24,y-62,10,30,"#263d65");
+
+    circle(x-29,y-30,6,"#d7a27c");
+
+    circle(x+29,y-30,6,"#d7a27c");
+
+    // 真實照片頭像
+
+    ctx.save();
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        x,y-86,31,36,0,0,Math.PI*2
+    );
+
+    ctx.clip();
+
+    if(face.complete && face.naturalWidth>0){
+
+        ctx.drawImage(
+            face,x-31,y-122,62,72
+        );
+
+    }else{
+
+        rect(
+            x-31,y-122,
+            62,72,"#d7a27c"
+        );
+
+        circle(x-10,y-90,3,"#263244");
+        circle(x+10,y-90,3,"#263244");
+
+    }
+
+    ctx.restore();
+
+    text("教授 NPC",x,y+20,15,"#334155");
+
+}
+
+// 玩家
+
+function drawPlayer(){
+
+    var x=player.x;
+    var y=player.y;
+
+    rect(x-15,y-20,12,20,"#263244");
+
+    rect(x+3,y-20,12,20,"#263244");
+
+    rect(x-20,y-48,40,30,"#22a6b3");
+
+    circle(x,y-60,20,"#e7b58b");
+
+    rect(x-19,y-79,38,14,"#342a24");
+
+    circle(x-7,y-60,2,"#111827");
+
+    circle(x+7,y-60,2,"#111827");
+
+    text("PLAYER",x,y+15,12,"#334155");
+
+}
+
+// 教授對話框
+
+function speechBubble(){
+
+    var message=dialogues[dialogueIndex];
+
+    ctx.font="bold 20px sans-serif";
+
+    var width=ctx.measureText(message).width+38;
+
+    var x=professor.x-width/2;
+
+    x=Math.max(8,Math.min(792-width,x));
+
+    var y=professor.y-180;
+
+    rect(x-3,y-3,width+6,51,"#263244");
+
+    rect(x,y,width,45,"#ffffff");
+
+    ctx.fillStyle="#ffffff";
+
+    ctx.beginPath();
+
+    ctx.moveTo(professor.x-10,y+43);
+
+    ctx.lineTo(professor.x+10,y+43);
+
+    ctx.lineTo(professor.x,y+58);
+
+    ctx.closePath();
+
+    ctx.fill();
+
+    text(
+        message,
+        x+width/2,
+        y+29,
+        20,
+        "#172033"
+    );
+
+}
+
+// 更新角色
+
+function update(){
+
+    frame++;
+
+    professor.x+=professor.direction*1.2;
+
+    if(professor.x>650){
+
+        professor.direction=-1;
+
+    }
+
+    if(professor.x<150){
+
+        professor.direction=1;
+
+    }
+
+    if(keys.w) player.y-=3;
+
+    if(keys.s) player.y+=3;
+
+    if(keys.a) player.x-=3;
+
+    if(keys.d) player.x+=3;
+
+    player.x=Math.max(
+        25,Math.min(775,player.x)
+    );
+
+    player.y=Math.max(
+        230,Math.min(475,player.y)
+    );
+
+}
+
+// 遊戲主迴圈
+
+function loop(){
+
+    update();
+
+    classroom();
+
+    if(player.y<professor.y){
+
+        drawPlayer();
+
+        drawProfessor();
+
+    }else{
+
+        drawProfessor();
+
+        drawPlayer();
+
+    }
+
+    speechBubble();
+
+    rect(0,0,800,25,"#172033");
+
+    text(
+        "NPC SIMULATOR",
+        105,18,13,"#ffffff"
+    );
+
+    text(
+        "對話次數："+talkCount,
+        700,18,14,"#facc15"
+    );
+
+    requestAnimationFrame(loop);
+
+}
+
+// 不需要按開始，直接執行
+
+loop();
+
+</script>
+</body>
+</html>
